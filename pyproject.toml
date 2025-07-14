@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "py-api-template"
+name = "hikkinomore-buddy"
 version = "0.1.0"
 description = "template for python api server"
 authors = ["Your Name <you@example.com>"]
@@ -13,11 +13,13 @@ fastapi-slim = "^0.116.1"
 uvicorn = "^0.35.0"
 uvloop = "^0.21.0"
 httptools = "^0.6.4"
+pydantic-ai-slim = {extras = ["evals", "groq"], version = "^0.4.2"}
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.3"
 poethepoet = "^0.36.0"
 rich = "^14.0.0"
+gradio = "^5.36.2"
 
 [tool.poetry.requires-plugins]
 poetry-plugin-export = ">=1.8"
@@ -32,15 +34,15 @@ ipywidgets = "*"
 
 [tool.poe.tasks]
 dev = { cmd = "python dev.py", use_exec = true }
-prod = "docker run --rm --gpus all -p 3000:3000 py-api-template:latest"
+prod = "docker run --rm --gpus all -p 3000:3000 hikkinomore-buddy:latest"
 test = "echo Not Implemented Yet!"
 publish = "echo Not Implemented Yet!"
 requirements = "poetry export -o requirements.txt --without-hashes"
 
 [tool.poe.tasks.build]
 cmd = """docker build -f Dockerfile . \
-  -t py-api-template:latest \
-  -t py-api-template:${tag} \
+  -t hikkinomore-buddy:latest \
+  -t hikkinomore-buddy:${tag} \
 """
 deps = ["requirements"]
 args = [{ name = "tag", positional = true, required = true }]

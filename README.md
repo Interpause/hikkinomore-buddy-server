@@ -1,4 +1,8 @@
-# py-api-template
+# hikkinomore-buddy
+
+Agentic buddy to practice social skills with.
+
+## py-api-template
 
 Template for FastAPI-based API server. Features:
 
