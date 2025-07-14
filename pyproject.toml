@@ -34,6 +34,7 @@ ipywidgets = "*"
 
 [tool.poe.tasks]
 dev = { cmd = "python dev.py", use_exec = true }
+chat = { cmd = "python chat.py", use_exec = true }
 prod = "docker run --rm --gpus all -p 3000:3000 hikkinomore-buddy:latest"
 test = "echo Not Implemented Yet!"
 publish = "echo Not Implemented Yet!"
