@@ -1,21 +1,45 @@
 """Gradio UI to test the API server."""
 
+import re
 from typing import List
+from uuid import uuid4
 
 import gradio as gr
 import httpx
 
+hack_extract = re.compile(r"<!-- session_id: ([a-z0-9]+) -->")
+
 
 async def chat(msg: str, hist: List[gr.MessageDict]):
     """Process the message as necessary."""
-    full = ""
+    # TODO: backend should validate that it allocated the session_id
+    # HACK: Iterate backwards till we find a model message and extract the session_id from it.
+    for obj in reversed(hist):
+        if obj["role"] != "assistant":
+            continue
+        if not isinstance(obj["content"], str):
+            continue
+        last_line = obj["content"].splitlines()[-1]
+        match = hack_extract.search(last_line)
+        if match is None:
+            continue
+        session_id = match.group(1)
+        break
+    else:
+        print("No session_id found in history, generating a new one.")
+        session_id = uuid4().hex
+    print(f"Using session_id: {session_id}")
+
     async with httpx.AsyncClient() as client:
         async with client.stream(
-            "POST", "http://localhost:3000/chat", json={"msg": msg}
+            "POST",
+            "http://localhost:3000/chat",
+            json={"msg": msg, "session_id": session_id},
         ) as res:
-            async for chunk in res.aiter_bytes():
-                full += chunk.decode()
-                yield full
+            async for update in res.aiter_bytes():
+                out = update.decode("utf-8")
+                out += f"\n<!-- session_id: {session_id} -->"
+                yield out
 
 
 demo = gr.ChatInterface(
@@ -23,7 +47,9 @@ demo = gr.ChatInterface(
     type="messages",
     title="Buddy",
     description="_Now with additional **Buddying**!_",
-    editable=True,
+    # NVM storing history in backend so can't edit.
+    # editable=True,
+    # We can still save smth for frontend, but its not the ground truth.
     save_history=True,
 )
 
