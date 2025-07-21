@@ -1,11 +1,14 @@
-"""Handles storing and retrieving chat history."""
+"""Handles storing and retrieving chat history and skill tracking."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import List
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import aiosqlite
 from pydantic_ai.messages import ModelMessage, ModelMessagesTypeAdapter
+
+if TYPE_CHECKING:
+    from src.skills import SkillJudgment
 
 # TODO: Probably switch to SQLAlchemy when the expected worst case scenario occurs.
 # Actually key-document databases are better...
@@ -52,6 +55,35 @@ class Database:
             await conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_sessions_user_id
                 ON sessions (user_id)
+            """)
+
+            # Social skills tracking table.
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS skill_evaluations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    skill_type TEXT NOT NULL,
+                    score REAL NOT NULL,
+                    reason TEXT NOT NULL,
+                    confidence REAL NOT NULL,
+                    conversation_context TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id),
+                    FOREIGN KEY (session_id) REFERENCES sessions (id)
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_skill_evaluations_user_skill
+                ON skill_evaluations (user_id, skill_type)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_skill_evaluations_session_skill
+                ON skill_evaluations (session_id, skill_type)
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_skill_evaluations_created_at
+                ON skill_evaluations (created_at)
             """)
             await conn.commit()
 
@@ -116,5 +148,31 @@ class Database:
         await conn.execute(
             """INSERT INTO messages (session_id, data) VALUES (?, ?)""",
             (session_id, data),
+        )
+        await conn.commit()
+
+    # Social skills tracking methods
+    async def add_skill_evaluation(
+        self,
+        user_id: str,
+        session_id: str,
+        judgment: "SkillJudgment",
+        conversation_context: Optional[str] = None,
+    ):
+        """Add a skill evaluation record."""
+        conn = self.conn
+        await conn.execute(
+            """INSERT INTO skill_evaluations 
+               (user_id, session_id, skill_type, score, reason, confidence, conversation_context) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                session_id,
+                judgment.skill_type,
+                judgment.score,
+                judgment.reason,
+                judgment.confidence,
+                conversation_context,
+            ),
         )
         await conn.commit()
