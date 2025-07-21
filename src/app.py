@@ -1,40 +1,26 @@
 """Main app."""
 
 from dotenv import load_dotenv
+from pydantic_ai import UnexpectedModelBehavior, capture_run_messages
 
 load_dotenv()
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
-from pydantic_ai import Agent
 
+from src.agents.chat import create_chat_agent
 from src.db import Database
-from src.deps import ChatDeps
-from src.structs import ChatRequest
+from src.skills import (
+    get_user_skill_summary,
+)
+from src.structs import ChatDeps, ChatRequest
 
 __all__ = ["create_app"]
 log = logging.getLogger(__name__)
-
-
-# I think youre supposed to create multiple agents, constrain their output type
-# and have them work with each other.
-def create_chat_agent():
-    """Create front-facing chat agent."""
-    agent = Agent(
-        "groq:meta-llama/llama-4-scout-17b-16e-instruct",
-        deps_type=ChatDeps,
-        system_prompt=f"""\
-Your name is Buddy.\
-""",
-    )
-
-    return agent
-
-
-# TODO: Convert PydanticAI's Agent history to conventional OpenAI ChatMessage format.
 
 
 def create_app():
@@ -77,12 +63,61 @@ def create_app():
             async def stream_text():
                 # delta=False since history tracking is done in the backend, and True
                 # breaks pydantic_ai's history tracking (and they wontfix it).
-                async for update in result.stream_text(delta=False):
-                    yield update
+                with capture_run_messages() as dbg_msgs:
+                    try:
+                        async for update in result.stream_text(delta=False):
+                            yield update
 
-                # Once done, save new messages to the database.
-                await db.add_messages(session_id, result.new_messages())
+                        # Once done, save new messages to the database.
+                        await db.add_messages(session_id, result.new_messages())
+
+                    except UnexpectedModelBehavior as e:
+                        log.error(f"Messages: {dbg_msgs}", exc_info=e)
 
             return StreamingResponse(stream_text(), media_type="text/plain")
+
+    # TODO: AI GENERATED, EVALUATE BELOW
+    @app.get("/skills/{user_id}")
+    async def get_skill_progress(user_id: str, db: Database = Depends(get_db)):
+        """Get skill development progress for a user."""
+        try:
+            # For the API endpoint, we don't need session_id for skill progress
+            # Create a minimal deps with placeholder session_id.
+            deps = ChatDeps(db=db, user_id=user_id, session_id="")
+            progress = await get_user_skill_summary(deps)
+            return progress
+        except Exception as e:
+            log.error(f"Error retrieving skill progress for {user_id}: {e}")
+            return {"error": "Failed to retrieve skill progress"}
+
+    @app.get("/skills/{user_id}/history")
+    async def get_skill_history(
+        user_id: str,
+        skill_type: Optional[str] = None,
+        db: Database = Depends(get_db),
+    ):
+        """Get skill evaluation history for a user."""
+        try:
+            if skill_type:
+                scores = await db.get_skill_scores(user_id, skill_type)
+                return {
+                    "skill_type": skill_type,
+                    "evaluations": [
+                        {"score": score, "timestamp": ts.isoformat()}
+                        for score, ts in scores
+                    ],
+                }
+            else:
+                all_scores = await db.get_all_skill_scores(user_id)
+                result = {}
+                for skill, scores in all_scores.items():
+                    result[skill] = [
+                        {"score": score, "timestamp": ts.isoformat()}
+                        for score, ts in scores
+                    ]
+                return result
+        except Exception as e:
+            log.error(f"Error retrieving skill history for {user_id}: {e}")
+            return {"error": "Failed to retrieve skill history"}
 
     return app

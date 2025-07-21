@@ -1,17 +1,21 @@
 """Handles storing and retrieving chat history and skill tracking."""
 
+import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 import aiosqlite
 from pydantic_ai.messages import ModelMessage, ModelMessagesTypeAdapter
 
 if TYPE_CHECKING:
-    from src.skills import SkillJudgment
+    from src.structs import SkillJudgmentFull
 
 # TODO: Probably switch to SQLAlchemy when the expected worst case scenario occurs.
 # Actually key-document databases are better...
+
+log = logging.getLogger(__name__)
 
 
 # TODO: caching if it turns out to be a bottleneck.
@@ -156,10 +160,14 @@ class Database:
         self,
         user_id: str,
         session_id: str,
-        judgment: "SkillJudgment",
-        conversation_context: Optional[str] = None,
+        judgment: "SkillJudgmentFull",
     ):
         """Add a skill evaluation record."""
+        log.info(
+            f"Adding skill for user {user_id} in session {session_id}: {judgment.skill_type} = {judgment.score}"
+        )
+        log.info(judgment.model_dump_json())
+
         conn = self.conn
         await conn.execute(
             """INSERT INTO skill_evaluations 
@@ -172,7 +180,79 @@ class Database:
                 judgment.score,
                 judgment.reason,
                 judgment.confidence,
-                conversation_context,
+                judgment.conversation_context,
             ),
         )
         await conn.commit()
+
+    # TODO: AI GENERATED. EVALUATE BELOW.
+    async def get_skill_scores(
+        self, user_id: str, skill_type: str
+    ) -> List[Tuple[float, datetime]]:
+        """Get all scores for a specific skill for a user."""
+        conn = self.conn
+        cur = await conn.execute(
+            """SELECT score, created_at FROM skill_evaluations 
+               WHERE user_id = ? AND skill_type = ? 
+               ORDER BY created_at ASC""",
+            (user_id, skill_type),
+        )
+        rows = await cur.fetchall()
+        return [(row[0], datetime.fromisoformat(row[1])) for row in rows]
+
+    async def get_all_skill_scores(self, user_id: str) -> dict:
+        """Get all skill scores for a user, grouped by skill type."""
+        conn = self.conn
+        cur = await conn.execute(
+            """SELECT skill_type, score, created_at FROM skill_evaluations 
+               WHERE user_id = ? 
+               ORDER BY skill_type, created_at ASC""",
+            (user_id,),
+        )
+        rows = await cur.fetchall()
+
+        result = {}
+        for row in rows:
+            skill_type = row[0]
+            score = row[1]
+            created_at = datetime.fromisoformat(row[2])
+
+            if skill_type not in result:
+                result[skill_type] = []
+            result[skill_type].append((score, created_at))
+
+        return result
+
+    async def get_skill_mastery_status(self, user_id: str) -> dict:
+        """Get mastery status for all skills for a user."""
+        from src.agents.skill import SOCIAL_SKILLS
+        from src.skills import (
+            calculate_weighted_score,
+            is_skill_mastered,
+        )
+
+        all_scores = await self.get_all_skill_scores(user_id)
+        mastery_status = {}
+
+        for skill_type in SOCIAL_SKILLS:
+            scores = all_scores.get(skill_type, [])
+            if scores:
+                weighted_score = calculate_weighted_score(scores)
+                is_mastered = is_skill_mastered(scores)
+                mastery_status[skill_type] = {
+                    "weighted_score": weighted_score,
+                    "is_mastered": is_mastered,
+                    "total_evaluations": len(scores),
+                    "latest_score": scores[-1][0] if scores else None,
+                }
+            else:
+                mastery_status[skill_type] = {
+                    "weighted_score": 0.0,
+                    "is_mastered": False,
+                    "total_evaluations": 0,
+                    "latest_score": None,
+                }
+
+        return mastery_status
+
+    # END OF EVALUATION.

@@ -38,6 +38,7 @@ async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
             "POST",
             "http://localhost:3000/chat",
             json={"msg": msg, "session_id": session_id, "user_id": user_id},
+            timeout=None,
         ) as res:
             async for update in res.aiter_bytes():
                 out = update.decode("utf-8")
@@ -45,7 +46,7 @@ async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
                 yield out
 
 
-user_id = gr.Textbox(label="User ID")
+user_id_widget = gr.Textbox(label="User ID")
 
 demo = gr.ChatInterface(
     fn=chat,
@@ -56,8 +57,31 @@ demo = gr.ChatInterface(
     # editable=True,
     # We can still save smth for frontend, but its not the ground truth.
     save_history=True,
-    additional_inputs=[user_id],
+    additional_inputs=[user_id_widget],
 )
+
+# I'll be iterating quite a bit still, so don't reset the state due to lost secret
+# when gradio app is restarted.
+demo.saved_conversations.secret = "not-secret"
+
+
+with demo:
+    user_id_store = gr.BrowserState(
+        default_value="",
+        storage_key="user_id",
+        secret="not-secret",
+    )
+
+    @gr.on([user_id_widget.change], inputs=[user_id_widget], outputs=[user_id_store])
+    def update_user_id(value: str):
+        """Update the user_id in the browser state."""
+        return value
+
+    @demo.load(inputs=[user_id_store], outputs=[user_id_widget])
+    def load_user_id(value: str):
+        """Load the user_id from the browser state."""
+        return "" if value is None else value
+
 
 # NOTE: gradio chat.py breaks the chat interface after refresh for some reason.
 if __name__ == "__main__":

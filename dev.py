@@ -11,13 +11,17 @@ def create_debug_app():
     import starlette
     import uvicorn
 
+    rich_handler = RichHandler(
+        rich_tracebacks=True, tracebacks_suppress=[fastapi, starlette, uvicorn]
+    )
+    file_handler = logging.FileHandler("dev.log", mode="a", encoding="utf-8")
+    file_handler.setFormatter(
+        logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s")
+    )
+
     logging.basicConfig(
-        format="",
-        handlers=[
-            RichHandler(
-                rich_tracebacks=True, tracebacks_suppress=[fastapi, starlette, uvicorn]
-            )
-        ],
+        handlers=[rich_handler, file_handler],
+        level=logging.NOTSET,
     )
     logging.getLogger("src").setLevel(logging.DEBUG)
 
@@ -29,7 +33,16 @@ def create_debug_app():
 if __name__ == "__main__":
     import uvicorn
 
-    logging.basicConfig(format="", handlers=[RichHandler(rich_tracebacks=True)])
+    rich_handler = RichHandler(rich_tracebacks=True)
+    file_handler = logging.FileHandler("dev.log", mode="a", encoding="utf-8")
+    file_handler.setFormatter(
+        logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s")
+    )
+
+    logging.basicConfig(
+        handlers=[rich_handler, file_handler],
+        level=logging.NOTSET,
+    )
 
     uvicorn.run(
         "dev:create_debug_app",
