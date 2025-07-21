@@ -27,6 +27,13 @@ class Database:
             # Initialize the database schema as necessary.
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY
                 )
             """)
@@ -42,12 +49,16 @@ class Database:
                 CREATE INDEX IF NOT EXISTS idx_messages_session_id
                 ON messages (session_id)
             """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_user_id
+                ON sessions (user_id)
+            """)
             await conn.commit()
 
             yield cls(conn)
 
     # TODO: session_id by right should be allocated by server, not client.
-    async def ensure_session(self, session_id: str):
+    async def ensure_session(self, session_id: str, user_id: str):
         """Create a new session."""
         conn = self.conn
         # Check if session_id already exists.
@@ -57,8 +68,32 @@ class Database:
         if await cur.fetchone() is not None:
             return  # Don't waste time to INSERT OR IGNORE then commit.
 
-        await conn.execute("""INSERT INTO sessions (id) VALUES (?)""", (session_id,))
+        await conn.execute(
+            """INSERT INTO sessions (id, user_id) VALUES (?, ?)""",
+            (session_id, user_id),
+        )
         await conn.commit()
+
+    async def ensure_user(self, user_id: str):
+        """Create a new user if it doesn't exist."""
+        conn = self.conn
+        # Check if user_id already exists.
+        cur = await conn.execute("""SELECT 1 FROM users WHERE id = ?""", (user_id,))
+        if await cur.fetchone() is not None:
+            return  # Don't waste time to INSERT OR IGNORE then commit.
+
+        await conn.execute("""INSERT INTO users (id) VALUES (?)""", (user_id,))
+        await conn.commit()
+
+    async def get_user_sessions(self, user_id: str) -> List[str]:
+        """Get all session IDs for a user."""
+        conn = self.conn
+        cur = await conn.execute(
+            """SELECT id FROM sessions WHERE user_id = ?""",
+            (user_id,),
+        )
+        rows = await cur.fetchall()
+        return [row[0] for row in rows]
 
     # NOTE: The messages are saved & retrieved in chunks of several messages.
     async def get_messages(self, session_id: str) -> List[ModelMessage]:

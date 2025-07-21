@@ -8,3 +8,4 @@ class ChatRequest(BaseModel):
 
     msg: str
     session_id: str
+    user_id: str

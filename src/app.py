@@ -2,8 +2,6 @@
 
 from dotenv import load_dotenv
 
-from src.db import Database
-
 load_dotenv()
 
 import logging
@@ -13,6 +11,8 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
 from pydantic_ai import Agent
 
+from src.db import Database
+from src.deps import ChatDeps
 from src.structs import ChatRequest
 
 __all__ = ["create_app"]
@@ -25,6 +25,7 @@ def create_chat_agent():
     """Create front-facing chat agent."""
     agent = Agent(
         "groq:meta-llama/llama-4-scout-17b-16e-instruct",
+        deps_type=ChatDeps,
         system_prompt=f"""\
 Your name is Buddy.\
 """,
@@ -33,20 +34,7 @@ Your name is Buddy.\
     return agent
 
 
-# NOTE: Proposed structure:
-# To simplify the microservice, convo history is sent with each request. This means
-# the convo can be locally stored in frontend, or frontend retrieves it from some
-# other database service, but essentially its not the concern of this service.
-
-# That said, pydantic_ai's history tracking contains much more info, which is lost
-# when receiving only the front-facing convo history. For hikkinomore it should
-# be fine, but if I was building smth much more reliant on past tool calls, then
-# either I am sending pydantic_ai's history to the frontend, or the tracking has
-# to happen here instead.
-#
-# Ignore the above, I was forced by it being difficult to convert the frontend history
-# to pydantic_ai's history format, so I am storing the history in the backend. The
-# frontend still keeps its own copy but it is not synced with the backend.
+# TODO: Convert PydanticAI's Agent history to conventional OpenAI ChatMessage format.
 
 
 def create_app():
@@ -73,11 +61,19 @@ def create_app():
     async def chat(req: ChatRequest, db: Database = Depends(get_db)):
         msg = req.msg
         session_id = req.session_id
+        user_id = req.user_id
 
-        await db.ensure_session(session_id)
+        await db.ensure_user(user_id)
+        await db.ensure_session(session_id, user_id)
         hist = await db.get_messages(session_id)
-        async with chat_agent.run_stream(msg, message_history=hist) as result:
 
+        # Create proper dependencies for the agent
+        deps = ChatDeps(db=db, user_id=user_id, session_id=session_id)
+
+        async with chat_agent.run_stream(
+            msg, message_history=hist, deps=deps
+        ) as result:
+            # NOTE: Evaluating the conversation is done by agent tool call, not here.
             async def stream_text():
                 # delta=False since history tracking is done in the backend, and True
                 # breaks pydantic_ai's history tracking (and they wontfix it).
