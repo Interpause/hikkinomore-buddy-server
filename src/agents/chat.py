@@ -53,18 +53,11 @@ def create_chat_agent():
         db = ctx.deps.db
         session_id = ctx.deps.session_id
 
-        # Get the current message history from the run context
-        # We'll use the message history from the database for consistency
-        message_history = await db.get_messages(session_id)
-
-        if len(message_history) == 0:
-            return "No messages found in session history for evaluation."
-
         # Perform skill evaluation.
         try:
             skill_evaluation = await evaluate_recent_conversation(
                 skill_judge_agent=skill_judge_agent,
-                message_history=message_history,
+                message_history=ctx.messages,
                 recent_messages=recent_messages,
             )
 
@@ -82,7 +75,9 @@ def create_chat_agent():
                 return "Skill evaluation performed."
             else:
                 log.info(f"Reason for no evaluation: {skill_evaluation.reason}")
-                return "Skill evaluation performed."
+                return (
+                    f"Skill evaluation rejected for reason: {skill_evaluation.reason}"
+                )
         except Exception as e:
             log.error(f"Error in judge_conversation tool: {e}", exc_info=e)
             return f"Error evaluating conversation."

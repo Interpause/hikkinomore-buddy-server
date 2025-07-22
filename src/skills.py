@@ -158,12 +158,6 @@ async def evaluate_recent_conversation(
     Returns:
         SkillJudgementFull containing the evaluation results.
     """
-    if not message_history or len(message_history) < 2:
-        return SkillJudgementFull(
-            skill_type=None,
-            reason="Insufficient conversation history for evaluation",
-        )
-
     # Convert PydanticAI messages to our ConversationMessage format
     conversation_messages = convert_model_messages_to_conversation(
         message_history=message_history,
@@ -172,10 +166,10 @@ async def evaluate_recent_conversation(
         skip_tool_messages=True,
     )
 
-    if not conversation_messages:
+    if len(conversation_messages) < 2:
         return SkillJudgementFull(
             skill_type=None,
-            reason="No valid conversation content found for evaluation",
+            reason="Insufficient conversation history for evaluation",
         )
 
     # Get user profile for additional context (placeholder for now)
@@ -204,7 +198,9 @@ async def get_user_skill_summary(deps: ChatDeps) -> UserSkillSummary:
         if evaluation.skill_type is not None:  # Skip evaluations with no skill type
             if evaluation.skill_type not in scores_by_skill:
                 scores_by_skill[evaluation.skill_type] = []
-            scores_by_skill[evaluation.skill_type].append((evaluation.score, evaluation.timestamp))
+            scores_by_skill[evaluation.skill_type].append(
+                (evaluation.score, evaluation.timestamp)
+            )
 
     # Calculate mastery status using business logic
     skill_details = {}

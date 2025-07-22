@@ -21,6 +21,8 @@ Your task:
 
 Important guidelines:
 - Focus ONLY on the user's messages and behavior, not the assistant's
+  - This means messages that start with "USER", not "SYSTEM" or "ASSISTANT"
+  - If there are no user messages, set skill_type to null
 - Look for specific behaviors that demonstrate skills, not just topic discussion
 - Consider context - what might be appropriate in one situation may not be in another
 - Be constructive in your feedback
