@@ -1,12 +1,16 @@
 """User study logging for psychological analysis of conversations."""
 
 import logging
-import os
-from datetime import datetime
+import time
 from pathlib import Path
 from typing import Optional
 
 from src.structs import SkillJudgementFull
+
+
+def utc8_converter(*args):
+    """Convert timestamp to UTC+8 timezone."""
+    return time.gmtime(time.mktime(time.localtime()) + 8 * 3600)
 
 
 class UserStudyLogger:
@@ -59,6 +63,7 @@ class UserStudyLogger:
         formatter = logging.Formatter(
             "[%(asctime)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
+        formatter.converter = utc8_converter  # Set to UTC+8
         handler.setFormatter(formatter)
 
         logger.addHandler(handler)
@@ -85,11 +90,11 @@ class UserStudyLogger:
     def log_assistant_message(self, user_id: str, session_id: str, message: str):
         """Log an assistant message."""
         logger = self._get_session_logger(user_id, session_id)
-        # Clean up the message and remove session_id comments
+        # Clean up the message and remove session_info comments
         clean_message = message.strip()
-        # Remove session_id comment from the end
-        if "<!-- session_id:" in clean_message:
-            clean_message = clean_message.split("<!-- session_id:")[0].strip()
+        # Remove session_info comment from the end
+        if "<!-- session_info:" in clean_message:
+            clean_message = clean_message.split("<!-- session_info:")[0].strip()
         clean_message = clean_message.replace("\n", " [NEWLINE] ")
         logger.info(f"ASSISTANT: {clean_message}")
 

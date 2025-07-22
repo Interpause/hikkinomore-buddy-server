@@ -12,9 +12,10 @@ from src.db import Database
 class ChatRequest(BaseModel):
     """Request body for chat endpoint."""
 
-    msg: str
+    msg: str | None
     session_id: str
     user_id: str
+    preset: str
 
 
 # TODO: May be deleted, seems not useful.
@@ -44,6 +45,7 @@ class ChatDeps:
     db: Database
     user_id: str
     session_id: str
+    preset: str
 
 
 # NOTE: This is used as an output tool by the skill agent, so the docstrings are important.

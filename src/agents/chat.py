@@ -11,24 +11,29 @@ from src.user_study_logger import get_user_study_logger
 
 log = logging.getLogger(__name__)
 
-# TODO: Use @agent.instructions (supports RunContext) to modify system prompt dynamically.
-
 
 def create_chat_agent():
     """Create front-facing chat agent."""
     from src.agents.prompts import PROMPTS
 
-    # Load prompt template
-    prompt_template = PROMPTS["chat_generic.md"]
-    if prompt_template is None:
-        raise ValueError("chat_generic.md prompt not found.")
-
     agent = Agent(
         # "groq:meta-llama/llama-4-scout-17b-16e-instruct",
         "google-gla:gemini-2.5-flash-lite-preview-06-17",
         deps_type=ChatDeps,
-        instructions=prompt_template,
     )
+
+    @agent.instructions
+    def instructions(ctx: RunContext[ChatDeps]) -> str:
+        """Instructions for the chat agent."""
+        preset = ctx.deps.preset
+        if preset == "GENERAL_BOT":
+            prompt = PROMPTS["chat_generic.md"]
+        elif preset == "NERVY_BOT":
+            prompt = PROMPTS["chat_nervy.md"]
+        else:
+            raise ValueError(f"Unknown preset: {preset}")
+        assert prompt is not None, f"Prompt template not found for {prompt}."
+        return prompt
 
     skill_judge_agent = create_skill_judge_agent()
 

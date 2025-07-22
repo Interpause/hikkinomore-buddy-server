@@ -53,6 +53,7 @@ def create_app():
         msg = req.msg
         session_id = req.session_id
         user_id = req.user_id
+        preset = req.preset
 
         # Get user study logger
         study_logger = get_user_study_logger()
@@ -67,12 +68,17 @@ def create_app():
                 study_logger.log_session_start(user_id, session_id)
 
             # Log user message
-            study_logger.log_user_message(user_id, session_id, msg)
+            if msg is not None:
+                study_logger.log_user_message(user_id, session_id, msg)
+            else:
+                study_logger.log_session_event(user_id, session_id, f"Preset: {preset}")
 
         hist = await db.get_messages(session_id)
 
         # Create proper dependencies for the agent
-        deps = ChatDeps(db=db, user_id=user_id, session_id=session_id)
+        # TODO: Preset should be set once then persisted in the database, rather than
+        # letting the frontend change it every time.
+        deps = ChatDeps(db=db, user_id=user_id, session_id=session_id, preset=preset)
 
         with capture_run_messages() as dbg_msgs:
             try:
@@ -108,7 +114,7 @@ def create_app():
     async def get_skill_progress(user_id: str, db: Database = Depends(get_db)):
         """Get skill development progress for a user."""
         try:
-            deps = ChatDeps(db=db, user_id=user_id, session_id="")
+            deps = ChatDeps(db=db, user_id=user_id, session_id="", preset="")
             progress = await get_user_skill_summary(deps)
             return progress
         except Exception as e:
