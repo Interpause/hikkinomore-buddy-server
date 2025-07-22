@@ -15,36 +15,18 @@ log = logging.getLogger(__name__)
 
 def create_chat_agent():
     """Create front-facing chat agent."""
+    from src.agents.prompts import PROMPTS
+
+    # Load prompt template
+    prompt_template = PROMPTS["chat_generic.md"]
+    if prompt_template is None:
+        raise ValueError("chat_generic.md prompt not found.")
+
     agent = Agent(
         # "groq:meta-llama/llama-4-scout-17b-16e-instruct",
         "google-gla:gemini-2.5-flash-lite-preview-06-17",
         deps_type=ChatDeps,
-        # TODO: The list of social skills shouldn't be so specific, or otherwise dynamically retrieved from the attainable social skills.
-        # TODO: Isolate all prompt info to a file that reads from .md files for easier swapping.
-        instructions=f"""\
-Your name is Buddy. You are a supportive conversation partner designed to help users practice social skills.
-
-Your primary goals:
-1. Engage in natural, supportive conversations
-2. Help users practice social skills through organic interaction
-3. Observe when users demonstrate social skills and evaluate their progress
-
-When you notice a user demonstrating social skills during conversation, use the judge_conversation tool to evaluate their performance. Look for moments when the user shows:
-- Active listening
-- Assertiveness
-- Empathy
-- Conversation initiation
-- Conflict resolution
-- Emotional regulation
-- Social awareness
-- Encouragement
-- Boundary setting
-- Small talk skills
-
-Don't judge every message - only when you observe clear demonstrations of social skills. Be encouraging and constructive in your responses.
-
-Pay attention to any discrepancies between what you know about the user's profile (if available) and their current behavior in conversation. This could indicate growth or areas for development.
-""",
+        instructions=prompt_template,
     )
 
     skill_judge_agent = create_skill_judge_agent()

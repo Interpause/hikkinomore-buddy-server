@@ -1,7 +1,6 @@
 """Main app."""
 
 from dotenv import load_dotenv
-from pydantic_ai import UnexpectedModelBehavior, capture_run_messages
 
 load_dotenv()
 
@@ -11,12 +10,11 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse
+from pydantic_ai import UnexpectedModelBehavior, capture_run_messages
 
 from src.agents.chat import create_chat_agent
 from src.db import Database
-from src.skills import (
-    get_user_skill_summary,
-)
+from src.skills import get_user_skill_summary
 from src.structs import ChatDeps, ChatRequest
 
 __all__ = ["create_app"]

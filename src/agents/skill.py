@@ -33,39 +33,20 @@ log = logging.getLogger(__name__)
 
 def create_skill_judge_agent() -> Agent[None, SkillJudgment]:
     """Create a skill evaluation agent in a closure, following chat.py pattern."""
+    from src.agents.prompts import PROMPTS
+
+    # TODO: can be refactored to dynamically match social skills using @agent.instructions
     # Build skills list for system prompt
     skills_list = "\n".join(
         [f"- {skill}: {desc}" for skill, desc in SOCIAL_SKILLS.items()]
     )
 
-    # TODO: can be refactored to dynamically match social skills using @agent.instructions
-    system_prompt = f"""You are an expert social skills evaluator. Your job is to analyze conversations and identify when users demonstrate specific social skills.
+    # Load prompt template and format with skills list
+    prompt_template = PROMPTS["skill_generic.md"]
+    if prompt_template is None:
+        raise ValueError("skill_generic.md prompt not found")
 
-Available Social Skills:
-{skills_list}
-
-Your task:
-1. Review the conversation context provided
-2. Identify if the user demonstrated any of the above social skills
-3. Rate the demonstration on a scale from -1.0 to 1.0:
-   - 1.0: Excellent demonstration of the skill
-   - 0.5: Good demonstration with minor room for improvement
-   - 0.0: Neutral or no clear demonstration
-   - -0.5: Poor demonstration or missed opportunity
-   - -1.0: Behavior that contradicts or undermines the skill
-
-4. Provide a brief, specific reason for your rating
-5. Indicate your confidence level (0.0 to 1.0) in the assessment
-
-Important guidelines:
-- Focus ONLY on the user's messages and behavior, not the assistant's
-- Look for specific behaviors that demonstrate skills, not just topic discussion
-- Consider context - what might be appropriate in one situation may not be in another
-- Be constructive in your feedback
-- If multiple skills are demonstrated, choose the most prominent one
-- Return null for skill_type if no clear skill demonstration is observed
-
-Respond with a JSON object matching the required format."""
+    system_prompt = prompt_template.format(skills_list=skills_list)
 
     agent = Agent(
         # "groq:meta-llama/llama-4-scout-17b-16e-instruct",
