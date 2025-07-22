@@ -91,8 +91,17 @@ Focus on the user's behavior and provide your evaluation."""
             # Use await instead of streaming for full output
             result = await agent.run(prompt)
             output = result.output
+            skill_type = output.skill_type
+            if skill_type is not None and skill_type.lower() in {
+                "null",
+                "none",
+                "na",
+                "nil",
+                "n/a",
+            }:
+                skill_type = None
             wrapped = SkillJudgementFull(
-                skill_type=output.skill_type,
+                skill_type=skill_type,
                 score=output.score,
                 reason=output.reason,
                 confidence=output.confidence,
