@@ -14,6 +14,8 @@ async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
     """Process the message as necessary."""
     if user_id == "":
         raise gr.Error("User ID cannot be empty.")
+    if msg == "%SYSTEM%\tSHY":
+        msg = ""
 
     # TODO: backend should validate that it allocated the session_id
     # HACK: Iterate backwards till we find a model message and extract the session_id from it.
@@ -33,6 +35,8 @@ async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
         session_id = uuid4().hex
     print(f"Using session_id: {session_id}, user_id: {user_id}")
 
+    # TODO: Pass which scenario to use to backend; Must be done there since history
+    # is stored in the backend.
     async with httpx.AsyncClient() as client:
         async with client.stream(
             "POST",
@@ -75,6 +79,14 @@ with demo:
         storage_key="user_id",
         secret="not-secret",
     )
+    with gr.Row():
+        btn_scenario_1 = gr.Button("Scenario 1: Shy")
+
+        btn_scenario_1.click(
+            fn=lambda: "%SYSTEM%\tSHY",
+            inputs=[],
+            outputs=[demo.textbox],
+        )
 
     with gr.Accordion(label="Skill Judgement", open=False):
         refresh_button = gr.Button("Refresh Skill Summary", variant="secondary")
