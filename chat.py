@@ -1,5 +1,8 @@
 """Gradio UI to test the API server."""
 
+import base64
+import binascii
+import json
 import re
 from typing import List
 from uuid import uuid4
@@ -7,18 +10,21 @@ from uuid import uuid4
 import gradio as gr
 import httpx
 
-hack_extract = re.compile(r"<!-- session_id: ([a-z0-9]+) -->")
+hack_extract = re.compile(r"<!-- session_info: ([A-Za-z0-9+/=]+) -->")
 
 
 async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
     """Process the message as necessary."""
     if user_id == "":
         raise gr.Error("User ID cannot be empty.")
-    if msg == "%SYSTEM%\tSHY":
-        msg = ""
+    preset = None
+    if msg.startswith("%PRESET%\t"):
+        preset = msg.split("\t", 1)[1]
+        msg = None  # type: ignore
 
     # TODO: backend should validate that it allocated the session_id
-    # HACK: Iterate backwards till we find a model message and extract the session_id from it.
+    # HACK: Iterate backwards till we find a model message and extract the session_info from it.
+    session_id = None
     for obj in reversed(hist):
         if obj["role"] != "assistant":
             continue
@@ -28,25 +34,46 @@ async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
         match = hack_extract.search(last_line)
         if match is None:
             continue
-        session_id = match.group(1)
-        break
-    else:
+        try:
+            # Decode base64 JSON
+            encoded_info = match.group(1)
+            decoded_bytes = base64.b64decode(encoded_info)
+            session_info = json.loads(decoded_bytes.decode("utf-8"))
+            session_id = session_info.get("session_id")
+            if preset is not None:
+                raise gr.Error("Preset cannot be set in the middle of a conversation.")
+            preset = session_info.get("preset")
+            break
+        except (json.JSONDecodeError, binascii.Error, UnicodeDecodeError):
+            continue
+
+    if session_id is None:
         print("No session_id found in history, generating a new one.")
         session_id = uuid4().hex
     print(f"Using session_id: {session_id}, user_id: {user_id}")
 
-    # TODO: Pass which scenario to use to backend; Must be done there since history
-    # is stored in the backend.
+    preset = "GENERAL_BOT" if preset is None else preset
     async with httpx.AsyncClient() as client:
         async with client.stream(
             "POST",
             "http://localhost:3000/chat",
-            json={"msg": msg, "session_id": session_id, "user_id": user_id},
+            json={
+                "msg": msg,
+                "session_id": session_id,
+                "user_id": user_id,
+                "preset": preset,
+            },
             timeout=None,
         ) as res:
             async for update in res.aiter_bytes():
                 out = update.decode("utf-8")
-                out += f"\n<!-- session_id: {session_id} -->"
+                # Create session info JSON and encode as base64
+                session_info = {"session_id": session_id, "preset": preset}
+                session_info_json = json.dumps(session_info)
+                session_info_b64 = base64.b64encode(
+                    session_info_json.encode("utf-8")
+                ).decode("utf-8")
+                out += f"\n<!-- session_info: {session_info_b64} -->"
                 yield out
 
 
@@ -80,10 +107,15 @@ with demo:
         secret="not-secret",
     )
     with gr.Row():
-        btn_scenario_1 = gr.Button("Scenario 1: Shy")
-
-        btn_scenario_1.click(
-            fn=lambda: "%SYSTEM%\tSHY",
+        btn_p1 = gr.Button("Use General")
+        btn_p2 = gr.Button("Use Nervy")
+        btn_p1.click(
+            fn=lambda: "%PRESET%\tGENERAL_BOT",
+            inputs=[],
+            outputs=[demo.textbox],
+        )
+        btn_p2.click(
+            fn=lambda: "%PRESET%\tNERVY_BOT",
             inputs=[],
             outputs=[demo.textbox],
         )
@@ -128,4 +160,4 @@ with demo:
 
 # NOTE: gradio chat.py breaks the chat interface after refresh for some reason.
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(share=True)
