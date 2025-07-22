@@ -30,6 +30,8 @@ def create_chat_agent():
             prompt = PROMPTS["chat_generic.md"]
         elif preset == "NERVY_BOT":
             prompt = PROMPTS["chat_nervy.md"]
+        elif preset == "AVOI_BOT":
+            prompt = PROMPTS["chat_avoi.md"]
         else:
             raise ValueError(f"Unknown preset: {preset}")
         assert prompt is not None, f"Prompt template not found for {prompt}."

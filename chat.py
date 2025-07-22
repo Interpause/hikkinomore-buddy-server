@@ -85,7 +85,7 @@ demo = gr.ChatInterface(
     fn=chat,
     type="messages",
     title="Buddy",
-    description="_Now with additional **Buddying**!_",
+    description="Don't press the regenerate button or edit the convo history its not properly supported yet.",
     # NVM storing history in backend so can't edit.
     # editable=True,
     # We can still save smth for frontend, but its not the ground truth.
@@ -109,6 +109,7 @@ with demo:
     with gr.Row():
         btn_p1 = gr.Button("Use General")
         btn_p2 = gr.Button("Use Nervy")
+        btn_p3 = gr.Button("Use Avoi")
         btn_p1.click(
             fn=lambda: "%PRESET%\tGENERAL_BOT",
             inputs=[],
@@ -116,6 +117,11 @@ with demo:
         )
         btn_p2.click(
             fn=lambda: "%PRESET%\tNERVY_BOT",
+            inputs=[],
+            outputs=[demo.textbox],
+        )
+        btn_p3.click(
+            fn=lambda: "%PRESET%\tAVOI_BOT",
             inputs=[],
             outputs=[demo.textbox],
         )
