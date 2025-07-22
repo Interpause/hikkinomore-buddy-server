@@ -46,6 +46,8 @@ async def chat(msg: str, hist: List[gr.MessageDict], user_id: str):
                 yield out
 
 
+# Additional outputs and inputs have to be declared before gr.ChatInterface, which
+# will mount them.
 user_id_widget = gr.Textbox(label="User ID")
 
 demo = gr.ChatInterface(
@@ -58,10 +60,12 @@ demo = gr.ChatInterface(
     # We can still save smth for frontend, but its not the ground truth.
     save_history=True,
     additional_inputs=[user_id_widget],
+    additional_inputs_accordion=gr.Accordion("SET THESE BEFORE CHATTING", open=True),
 )
 
 # I'll be iterating quite a bit still, so don't reset the state due to lost secret
-# when gradio app is restarted.
+# when gradio app is restarted. State might still be lost if code is changed in
+# some ways.
 demo.saved_conversations.secret = "not-secret"
 
 
@@ -71,6 +75,33 @@ with demo:
         storage_key="user_id",
         secret="not-secret",
     )
+
+    with gr.Accordion(label="Skill Judgement", open=False):
+        refresh_button = gr.Button("Refresh Skill Summary", variant="secondary")
+        skill_summary_display = gr.JSON(label="Skill Progress", value=None)
+
+        async def refresh_skill_summary(user_id: str):
+            """Fetch and display the user's skill summary."""
+            if not user_id:
+                return {"error": "User ID is required"}
+
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        f"http://localhost:3000/skills/{user_id}/summary", timeout=10.0
+                    )
+                    if response.status_code == 200:
+                        return response.json()
+                    else:
+                        return {"error": f"API error: {response.status_code}"}
+            except Exception as e:
+                return {"error": f"Failed to fetch skill summary: {str(e)}"}
+
+        refresh_button.click(
+            refresh_skill_summary,
+            inputs=[user_id_widget],
+            outputs=[skill_summary_display],
+        )
 
     @gr.on([user_id_widget.change], inputs=[user_id_widget], outputs=[user_id_store])
     def update_user_id(value: str):
