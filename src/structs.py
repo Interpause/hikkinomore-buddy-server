@@ -47,8 +47,15 @@ class ChatDeps:
 
 
 # NOTE: This is used as an output tool by the skill agent, so the docstrings are important.
-class SkillJudgment(BaseModel):
-    """Result of skill evaluation."""
+class SkillJudgement(BaseModel):
+    """Judgement of user's demonstration of social skill, including score, reason, and confidence.
+
+    Attributes:
+        skill_type (Optional[str]): The type of skill being judged.
+        score (float): The score assigned to the skill.
+        reason (str): The reason for the given score.
+        confidence (float): Confidence level in the assessment.
+    """
 
     skill_type: Optional[str] = None
     score: float = 0.0
@@ -59,8 +66,8 @@ class SkillJudgment(BaseModel):
     # timestamp: Optional[datetime] = None
 
 
-class SkillJudgmentFull(SkillJudgment):
-    """Full skill judgment with additional context."""
+class SkillJudgementFull(SkillJudgement):
+    """Full skill judgement with additional context."""
 
     conversation_context: Optional[str] = None
     timestamp: datetime = datetime.now()  # Default to current time if not provided

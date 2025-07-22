@@ -16,8 +16,8 @@ from src.agents.skill import (
 )
 from src.structs import (
     ChatDeps,
-    SkillJudgment,
-    SkillJudgmentFull,
+    SkillJudgement,
+    SkillJudgementFull,
     SkillStatus,
     UserSkillSummary,
 )
@@ -57,13 +57,13 @@ def is_skill_mastered(
 
 
 async def evaluate_recent_conversation(
-    skill_judge_agent: Agent[None, SkillJudgment],
+    skill_judge_agent: Agent[None, SkillJudgement],
     message_history: List[ModelMessage],
     recent_messages: int,
-) -> SkillJudgmentFull:
+) -> SkillJudgementFull:
     """Evaluate recent conversation for social skill demonstration.
 
-    This method only performs the evaluation and returns the judgment.
+    This method only performs the evaluation and returns the judgement.
     It does not store the evaluation in the database - that should be
     done explicitly by the caller if needed.
 
@@ -73,10 +73,10 @@ async def evaluate_recent_conversation(
         recent_messages: Number of recent messages to analyze.
 
     Returns:
-        SkillJudgmentFull containing the evaluation results.
+        SkillJudgementFull containing the evaluation results.
     """
     if not message_history or len(message_history) < 2:
-        return SkillJudgmentFull(
+        return SkillJudgementFull(
             skill_type=None,
             reason="Insufficient conversation history for evaluation",
         )
@@ -90,7 +90,7 @@ async def evaluate_recent_conversation(
     )
 
     if not conversation_messages:
-        return SkillJudgmentFull(
+        return SkillJudgementFull(
             skill_type=None,
             reason="No valid conversation content found for evaluation",
         )
@@ -99,11 +99,11 @@ async def evaluate_recent_conversation(
     user_profile = None  # We removed user_profiles table for now
 
     # Evaluate the conversation using the refactored function
-    judgment = await evaluate_conversation(
+    judgement = await evaluate_conversation(
         skill_judge_agent, conversation_messages, user_profile
     )
 
-    return judgment
+    return judgement
 
 
 async def get_user_skill_summary(deps: ChatDeps) -> UserSkillSummary:

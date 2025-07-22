@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic_ai import Agent, UnexpectedModelBehavior, capture_run_messages
 
-from src.structs import ConversationMessage, SkillJudgment, SkillJudgmentFull
+from src.structs import ConversationMessage, SkillJudgement, SkillJudgementFull
 from src.utils import format_conversation
 
 # Configuration constants
@@ -31,7 +31,7 @@ SOCIAL_SKILLS = {
 log = logging.getLogger(__name__)
 
 
-def create_skill_judge_agent() -> Agent[None, SkillJudgment]:
+def create_skill_judge_agent() -> Agent[None, SkillJudgement]:
     """Create a skill evaluation agent in a closure, following chat.py pattern."""
     from src.agents.prompts import PROMPTS
 
@@ -51,7 +51,7 @@ def create_skill_judge_agent() -> Agent[None, SkillJudgment]:
     agent = Agent(
         # "groq:meta-llama/llama-4-scout-17b-16e-instruct",
         "google-gla:gemini-2.5-flash-lite-preview-06-17",
-        output_type=SkillJudgment,
+        output_type=SkillJudgement,
         instructions=system_prompt,
     )
 
@@ -59,10 +59,10 @@ def create_skill_judge_agent() -> Agent[None, SkillJudgment]:
 
 
 async def evaluate_conversation(
-    agent: Agent[None, SkillJudgment],
+    agent: Agent[None, SkillJudgement],
     messages: List[ConversationMessage],
     user_profile: Optional[Dict[str, Any]] = None,
-) -> SkillJudgmentFull:
+) -> SkillJudgementFull:
     """Evaluate a conversation for social skill demonstration.
 
     Args:
@@ -71,7 +71,7 @@ async def evaluate_conversation(
         user_profile: Optional user profile context
 
     Returns:
-        SkillJudgmentFull containing the evaluation results
+        SkillJudgementFull containing the evaluation results
     """
     # Format conversation for analysis
     conversation_text = format_conversation(messages)
@@ -92,7 +92,7 @@ Focus on the user's behavior and provide your evaluation."""
             # Use await instead of streaming for full output
             result = await agent.run(prompt)
             output = result.output
-            wrapped = SkillJudgmentFull(
+            wrapped = SkillJudgementFull(
                 skill_type=output.skill_type,
                 score=output.score,
                 reason=output.reason,
@@ -105,7 +105,7 @@ Focus on the user's behavior and provide your evaluation."""
 
         except UnexpectedModelBehavior as e:
             log.error(f"Messages: {dbg_msgs}", exc_info=e)
-            return SkillJudgmentFull(
+            return SkillJudgementFull(
                 skill_type=None,
                 reason=f"Evaluation error: {e}",
             )

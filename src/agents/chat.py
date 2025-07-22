@@ -32,7 +32,7 @@ def create_chat_agent():
     skill_judge_agent = create_skill_judge_agent()
 
     # TODO: Maybe this tool should return some judgement info for steering the convo?
-    @agent.tool(retries=2)
+    @agent.tool(retries=2, require_parameter_descriptions=True)
     async def judge_conversation(
         ctx: RunContext[ChatDeps],
         recent_messages: int = -1,
@@ -73,7 +73,7 @@ def create_chat_agent():
                 await db.add_skill_evaluation(
                     user_id=ctx.deps.user_id,
                     session_id=session_id,
-                    judgment=skill_evaluation,
+                    judgement=skill_evaluation,
                 )
 
                 log.info(
@@ -88,9 +88,6 @@ def create_chat_agent():
     # @agent.tool
     async def get_user_progress(ctx: RunContext[ChatDeps]) -> str:
         """Get a summary of the user's skill development progress."""
-        db = ctx.deps.db
-        session_id = ctx.deps.session_id
-
         try:
             progress = await get_user_skill_summary(ctx.deps)
 

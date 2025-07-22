@@ -10,7 +10,7 @@ import aiosqlite
 from pydantic_ai.messages import ModelMessage, ModelMessagesTypeAdapter
 
 if TYPE_CHECKING:
-    from src.structs import SkillJudgmentFull
+    from src.structs import SkillJudgementFull
 
 # TODO: Probably switch to SQLAlchemy when the expected worst case scenario occurs.
 # Actually key-document databases are better...
@@ -160,13 +160,13 @@ class Database:
         self,
         user_id: str,
         session_id: str,
-        judgment: "SkillJudgmentFull",
+        judgement: "SkillJudgementFull",
     ):
         """Add a skill evaluation record."""
         log.info(
-            f"Adding skill for user {user_id} in session {session_id}: {judgment.skill_type} = {judgment.score}"
+            f"Adding skill for user {user_id} in session {session_id}: {judgement.skill_type} = {judgement.score}"
         )
-        log.info(judgment.model_dump_json())
+        log.info(judgement.model_dump_json())
 
         conn = self.conn
         await conn.execute(
@@ -176,11 +176,11 @@ class Database:
             (
                 user_id,
                 session_id,
-                judgment.skill_type,
-                judgment.score,
-                judgment.reason,
-                judgment.confidence,
-                judgment.conversation_context,
+                judgement.skill_type,
+                judgement.score,
+                judgement.reason,
+                judgement.confidence,
+                judgement.conversation_context,
             ),
         )
         await conn.commit()
