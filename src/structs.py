@@ -66,11 +66,19 @@ class SkillJudgement(BaseModel):
     # timestamp: Optional[datetime] = None
 
 
+# Refer to db.py table schema.
 class SkillJudgementFull(SkillJudgement):
     """Full skill judgement with additional context."""
 
+    # NOTE: Below properties are optional because they are None on SkillJudgementFull
+    # that hasn't been stored in the database yet. SkillJudgementFull from the database
+    # will always have these set.
+
+    judgement_id: Optional[str] = None
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
     conversation_context: Optional[str] = None
-    timestamp: datetime = datetime.now()  # Default to current time if not provided
+    timestamp: Optional[datetime] = None
 
 
 class ConversationMessage(BaseModel):

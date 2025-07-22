@@ -8,7 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic_ai import UnexpectedModelBehavior, capture_run_messages
 
@@ -74,48 +74,60 @@ def create_app():
 
             return StreamingResponse(stream_text(), media_type="text/plain")
 
-    # TODO: AI GENERATED, EVALUATE BELOW
-    @app.get("/skills/{user_id}")
+    @app.get("/skills/{user_id}/summary")
     async def get_skill_progress(user_id: str, db: Database = Depends(get_db)):
         """Get skill development progress for a user."""
         try:
-            # For the API endpoint, we don't need session_id for skill progress
-            # Create a minimal deps with placeholder session_id.
             deps = ChatDeps(db=db, user_id=user_id, session_id="")
             progress = await get_user_skill_summary(deps)
             return progress
         except Exception as e:
-            log.error(f"Error retrieving skill progress for {user_id}: {e}")
-            return {"error": "Failed to retrieve skill progress"}
+            log.error(f"Error retrieving skill progress for {user_id}: {e}", exc_info=e)
+            raise HTTPException(500, detail="Failed to retrieve skill progress")
 
     @app.get("/skills/{user_id}/history")
     async def get_skill_history(
         user_id: str,
         skill_type: Optional[str] = None,
+        session_id: Optional[str] = None,
         db: Database = Depends(get_db),
     ):
         """Get skill evaluation history for a user."""
         try:
+            # Get all skill evaluations for the user (optionally filtered by session)
+            skill_history = await db.get_skill_history(user_id, session_id)
+
+            # Filter by skill_type if specified
             if skill_type:
-                scores = await db.get_skill_scores(user_id, skill_type)
-                return {
-                    "skill_type": skill_type,
-                    "evaluations": [
-                        {"score": score, "timestamp": ts.isoformat()}
-                        for score, ts in scores
-                    ],
-                }
-            else:
-                all_scores = await db.get_all_skill_scores(user_id)
-                result = {}
-                for skill, scores in all_scores.items():
-                    result[skill] = [
-                        {"score": score, "timestamp": ts.isoformat()}
-                        for score, ts in scores
-                    ]
-                return result
+                skill_history = [
+                    evaluation
+                    for evaluation in skill_history
+                    if evaluation.skill_type == skill_type
+                ]
+
+            # Return flat list of evaluations
+            return {
+                "user_id": user_id,
+                "skill_type": skill_type,
+                "session_id": session_id,
+                "evaluations": [
+                    {
+                        "skill_type": evaluation.skill_type,
+                        "score": evaluation.score,
+                        "reason": evaluation.reason,
+                        "confidence": evaluation.confidence,
+                        "timestamp": evaluation.timestamp.isoformat()
+                        if evaluation.timestamp
+                        else None,
+                    }
+                    for evaluation in skill_history
+                    if evaluation.skill_type is not None
+                ],
+            }
         except Exception as e:
-            log.error(f"Error retrieving skill history for {user_id}: {e}")
-            return {"error": "Failed to retrieve skill history"}
+            log.error(f"Error retrieving skill history for {user_id}: {e}", exc_info=e)
+            raise HTTPException(
+                status_code=500, detail="Failed to retrieve skill history"
+            )
 
     return app

@@ -1,4 +1,6 @@
 """Social skills detection and tracking."""
+# Man this is the most AI generated file, but I don't know anything about how one
+# would define mastery of social skills anyways.
 
 import logging
 from datetime import datetime
@@ -29,7 +31,10 @@ log = logging.getLogger(__name__)
 def calculate_weighted_score(
     scores: List[tuple[float, datetime]], alpha: float = RECENCY_ALPHA
 ) -> float:
-    """Calculate weighted recency score from a list of (score, timestamp) tuples."""
+    """Calculate weighted recency score from a list of (score, timestamp) tuples.
+
+    The timestamp is only used to order the scores, not for time decay.
+    """
     if not scores:
         return 0.0
 
@@ -45,6 +50,56 @@ def calculate_weighted_score(
     return weighted_score
 
 
+def calculate_time_weighted_score(
+    scores: List[tuple[float, datetime]],
+    time_decay_days: float = 30.0,
+    min_weight: float = 0.1,
+) -> float:
+    """Calculate time-weighted score that factors in time deltas between evaluations.
+
+    This version gives more weight to recent scores based on how much time has passed
+    since each evaluation, with exponential decay over time.
+
+    Args:
+        scores: List of (score, timestamp) tuples
+        time_decay_days: Number of days for weight to decay to ~37% (1/e)
+        min_weight: Minimum weight to assign to very old scores
+
+    Returns:
+        Time-weighted average score
+    """
+    if not scores:
+        return 0.0
+
+    if len(scores) == 1:
+        return scores[0][0]
+
+    # Sort by timestamp (oldest first)
+    sorted_scores = sorted(scores, key=lambda x: x[1])
+
+    # Use the most recent timestamp as reference point
+    latest_time = sorted_scores[-1][1]
+
+    # Calculate time-based weights and weighted sum
+    weighted_sum = 0.0
+    total_weight = 0.0
+
+    for score, timestamp in sorted_scores:
+        # Calculate days since this score relative to the latest score
+        days_ago = (latest_time - timestamp).total_seconds() / (24 * 3600)
+
+        # Exponential decay: weight = e^(-days_ago / time_decay_days)
+        # This gives full weight (1.0) to the latest score and decays older ones
+        import math
+
+        weight = max(min_weight, math.exp(-days_ago / time_decay_days))
+
+        weighted_sum += score * weight
+        total_weight += weight
+
+    return weighted_sum / total_weight if total_weight > 0 else 0.0
+
+
 def is_skill_mastered(
     scores: List[tuple[float, datetime]], threshold: float = MASTERY_THRESHOLD
 ) -> bool:
@@ -53,6 +108,34 @@ def is_skill_mastered(
         return False
 
     weighted_score = calculate_weighted_score(scores)
+    return weighted_score >= threshold
+
+
+def is_skill_mastered_time_aware(
+    scores: List[tuple[float, datetime]],
+    threshold: float = MASTERY_THRESHOLD,
+    use_time_weighting: bool = True,
+    time_decay_days: float = 30.0,
+) -> bool:
+    """Determine if a skill is mastered using time-aware weighted scoring.
+
+    Args:
+        scores: List of (score, timestamp) tuples
+        threshold: Minimum weighted score required for mastery
+        use_time_weighting: Whether to use time-based weighting or simple recency weighting
+        time_decay_days: Number of days for time weight decay (only used if use_time_weighting=True)
+
+    Returns:
+        True if the skill is considered mastered
+    """
+    if len(scores) < MIN_SCORES_FOR_MASTERY:
+        return False
+
+    if use_time_weighting:
+        weighted_score = calculate_time_weighted_score(scores, time_decay_days)
+    else:
+        weighted_score = calculate_weighted_score(scores)
+
     return weighted_score >= threshold
 
 
@@ -96,6 +179,7 @@ async def evaluate_recent_conversation(
         )
 
     # Get user profile for additional context (placeholder for now)
+    # TODO: user_profile is ideally a merge of the chatbot's notes, user input, and skill history.
     user_profile = None  # We removed user_profiles table for now
 
     # Evaluate the conversation using the refactored function
@@ -111,24 +195,51 @@ async def get_user_skill_summary(deps: ChatDeps) -> UserSkillSummary:
     db = deps.db
     user_id = deps.user_id
 
-    mastery_status = await db.get_skill_mastery_status(user_id)
+    # Get all skill evaluations for this user
+    skill_history = await db.get_skill_history(user_id)
 
-    # Convert raw dict data to SkillStatus models
-    skill_details = {
-        skill_type: SkillStatus(**status_data)
-        for skill_type, status_data in mastery_status.items()
-    }
+    # Group evaluations by skill type
+    scores_by_skill = {}
+    for evaluation in skill_history:
+        if evaluation.skill_type is not None:  # Skip evaluations with no skill type
+            if evaluation.skill_type not in scores_by_skill:
+                scores_by_skill[evaluation.skill_type] = []
+            scores_by_skill[evaluation.skill_type].append((evaluation.score, evaluation.timestamp))
+
+    # Calculate mastery status using business logic
+    skill_details = {}
+    mastered_count = 0
+    in_progress_count = 0
+
+    for skill_type in SOCIAL_SKILLS:
+        scores = scores_by_skill.get(skill_type, [])
+        if scores:
+            weighted_score = calculate_weighted_score(scores)
+            is_mastered = is_skill_mastered(scores)
+
+            skill_details[skill_type] = SkillStatus(
+                weighted_score=weighted_score,
+                is_mastered=is_mastered,
+                total_evaluations=len(scores),
+                latest_score=scores[-1][0] if scores else None,
+            )
+
+            if is_mastered:
+                mastered_count += 1
+            elif len(scores) > 0:
+                in_progress_count += 1
+        else:
+            skill_details[skill_type] = SkillStatus(
+                weighted_score=0.0,
+                is_mastered=False,
+                total_evaluations=0,
+                latest_score=None,
+            )
 
     summary = UserSkillSummary(
         total_skills=len(SOCIAL_SKILLS),
-        mastered_skills=sum(
-            1 for status in mastery_status.values() if status["is_mastered"]
-        ),
-        skills_in_progress=sum(
-            1
-            for status in mastery_status.values()
-            if status["total_evaluations"] > 0 and not status["is_mastered"]
-        ),
+        mastered_skills=mastered_count,
+        skills_in_progress=in_progress_count,
         skill_details=skill_details,
     )
 
