@@ -16,6 +16,7 @@ from src.agents.chat import create_chat_agent
 from src.db import Database
 from src.skills import get_user_skill_summary
 from src.structs import ChatDeps, ChatRequest
+from src.user_study_logger import get_user_study_logger, init_user_study_logger
 
 __all__ = ["create_app"]
 log = logging.getLogger(__name__)
@@ -30,6 +31,12 @@ def create_app():
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         """Put only heavy loading or cleanup tasks here."""
+        # Initialize user study logging
+        import os
+
+        logging_enabled = os.getenv("USER_STUDY_LOGGING", "true").lower() == "true"
+        init_user_study_logger(enabled=logging_enabled)
+
         async with Database.connect("db.sqlite") as db:
             yield dict(db=db)
         # cleanup tasks
@@ -47,8 +54,21 @@ def create_app():
         session_id = req.session_id
         user_id = req.user_id
 
+        # Get user study logger
+        study_logger = get_user_study_logger()
+
         await db.ensure_user(user_id)
         await db.ensure_session(session_id, user_id)
+
+        # Log session start for new sessions
+        if study_logger:
+            hist = await db.get_messages(session_id)
+            if not hist:  # New session
+                study_logger.log_session_start(user_id, session_id)
+
+            # Log user message
+            study_logger.log_user_message(user_id, session_id, msg)
+
         hist = await db.get_messages(session_id)
 
         # Create proper dependencies for the agent
@@ -63,8 +83,16 @@ def create_app():
                     async def stream_text():
                         # delta=False since history tracking is done in the backend, and True
                         # breaks pydantic_ai's history tracking (and they wontfix it).
+                        full_response = ""
                         async for update in result.stream_text(delta=False):
+                            full_response = update  # Keep the latest full response
                             yield update
+
+                        # Log assistant response
+                        if study_logger and full_response:
+                            study_logger.log_assistant_message(
+                                user_id, session_id, full_response
+                            )
 
                         # Once done, save new messages to the database.
                         await db.add_messages(session_id, result.new_messages())
@@ -72,6 +100,9 @@ def create_app():
                     return StreamingResponse(stream_text(), media_type="text/plain")
             except Exception as e:
                 log.error(f"Messages: {dbg_msgs}", exc_info=e)
+                if study_logger:
+                    study_logger.log_error(user_id, session_id, f"Chat error: {str(e)}")
+                raise
 
     @app.get("/skills/{user_id}/summary")
     async def get_skill_progress(user_id: str, db: Database = Depends(get_db)):

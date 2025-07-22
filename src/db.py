@@ -168,6 +168,17 @@ class Database:
         )
         log.info(judgement.model_dump_json())
 
+        # Log to user study logger as well
+        from src.user_study_logger import get_user_study_logger
+
+        study_logger = get_user_study_logger()
+        if study_logger:
+            study_logger.log_session_event(
+                user_id,
+                session_id,
+                f"Skill evaluation saved to database: {judgement.skill_type}",
+            )
+
         conn = self.conn
         await conn.execute(
             """INSERT INTO skill_evaluations 
@@ -189,18 +200,18 @@ class Database:
         self, user_id: str, session_id: str | None = None
     ) -> List["SkillJudgementFull"]:
         """Get skill evaluation history for a user, optionally filtered by session.
-        
+
         Args:
             user_id: The user ID to get history for
             session_id: Optional session ID to filter by
-            
+
         Returns:
             List of SkillJudgementFull objects ordered by creation time
         """
         from src.structs import SkillJudgementFull
-        
+
         conn = self.conn
-        
+
         if session_id:
             query = """SELECT skill_type, score, reason, confidence, conversation_context, created_at 
                        FROM skill_evaluations 
@@ -213,14 +224,16 @@ class Database:
                        WHERE user_id = ? 
                        ORDER BY created_at ASC"""
             params = (user_id,)
-        
+
         cur = await conn.execute(query, params)
         rows = await cur.fetchall()
-        
+
         result = []
         for row in rows:
-            skill_type, score, reason, confidence, conversation_context, created_at = row
-            
+            skill_type, score, reason, confidence, conversation_context, created_at = (
+                row
+            )
+
             judgement = SkillJudgementFull(
                 skill_type=skill_type,
                 score=score,
@@ -230,7 +243,7 @@ class Database:
                 timestamp=datetime.fromisoformat(created_at),
             )
             result.append(judgement)
-        
+
         return result
 
     # END OF EVALUATION.
