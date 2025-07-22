@@ -1,7 +1,6 @@
 """Social skills evaluation agent."""
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic_ai import Agent, capture_run_messages
@@ -98,8 +97,6 @@ Focus on the user's behavior and provide your evaluation."""
                 reason=output.reason,
                 confidence=output.confidence,
                 conversation_context="\n".join(m.model_dump_json() for m in messages),
-                # NOTE: This will be reset later in the DB storage step.
-                timestamp=datetime.now(),
             )
             return wrapped
 
