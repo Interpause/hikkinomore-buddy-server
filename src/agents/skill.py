@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic_ai import Agent, UnexpectedModelBehavior, capture_run_messages
+from pydantic_ai import Agent, capture_run_messages
 
 from src.structs import ConversationMessage, SkillJudgement, SkillJudgementFull
 from src.utils import format_conversation
@@ -103,7 +103,7 @@ Focus on the user's behavior and provide your evaluation."""
             )
             return wrapped
 
-        except UnexpectedModelBehavior as e:
+        except Exception as e:
             log.error(f"Messages: {dbg_msgs}", exc_info=e)
             return SkillJudgementFull(
                 skill_type=None,

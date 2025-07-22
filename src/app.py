@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic_ai import UnexpectedModelBehavior, capture_run_messages
+from pydantic_ai import capture_run_messages
 
 from src.agents.chat import create_chat_agent
 from src.db import Database
@@ -54,25 +54,24 @@ def create_app():
         # Create proper dependencies for the agent
         deps = ChatDeps(db=db, user_id=user_id, session_id=session_id)
 
-        async with chat_agent.run_stream(
-            msg, message_history=hist, deps=deps
-        ) as result:
-            # NOTE: Evaluating the conversation is done by agent tool call, not here.
-            async def stream_text():
-                # delta=False since history tracking is done in the backend, and True
-                # breaks pydantic_ai's history tracking (and they wontfix it).
-                with capture_run_messages() as dbg_msgs:
-                    try:
+        with capture_run_messages() as dbg_msgs:
+            try:
+                async with chat_agent.run_stream(
+                    msg, message_history=hist, deps=deps
+                ) as result:
+                    # NOTE: Evaluating the conversation is done by agent tool call, not here.
+                    async def stream_text():
+                        # delta=False since history tracking is done in the backend, and True
+                        # breaks pydantic_ai's history tracking (and they wontfix it).
                         async for update in result.stream_text(delta=False):
                             yield update
 
                         # Once done, save new messages to the database.
                         await db.add_messages(session_id, result.new_messages())
 
-                    except UnexpectedModelBehavior as e:
-                        log.error(f"Messages: {dbg_msgs}", exc_info=e)
-
-            return StreamingResponse(stream_text(), media_type="text/plain")
+                    return StreamingResponse(stream_text(), media_type="text/plain")
+            except Exception as e:
+                log.error(f"Messages: {dbg_msgs}", exc_info=e)
 
     @app.get("/skills/{user_id}/summary")
     async def get_skill_progress(user_id: str, db: Database = Depends(get_db)):
