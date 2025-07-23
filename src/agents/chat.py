@@ -28,13 +28,53 @@ def create_chat_agent():
         preset = ctx.deps.preset
         if preset == "GENERAL_BOT":
             prompt = PROMPTS["chat_generic.md"]
+            assert prompt is not None, f"Prompt template not found for {prompt}."
         elif preset == "NERVY_BOT":
             prompt = PROMPTS["chat_nervy.md"]
+            assert prompt is not None, f"Prompt template not found for {prompt}."
+            if ctx.deps.is_first_message:
+                prompt += f"""
+
+Start the conversation with the following introduction:
+```
+Hey… thanks for choosing me. I totally get what it’s like to overthink every word. Wanna practice chatting with someone who won’t judge you at all? 😊 What kind of social situations make you feel nervous?
+```
+"""
         elif preset == "AVOI_BOT":
             prompt = PROMPTS["chat_avoi.md"]
+            assert prompt is not None, f"Prompt template not found for {prompt}."
+            if ctx.deps.is_first_message:
+                prompt += f"""
+
+Start the conversation with the following introduction:
+```
+Hi there. I know small talk can feel… weird. You can talk to me like a colleague, or like a friend—no pressure. Want to start by telling me how your day’s been, casually?
+```
+"""
+        elif preset == "ENTHU_BOT":
+            prompt = PROMPTS["chat_enthu.md"]
+            assert prompt is not None, f"Prompt template not found for {prompt}."
+            if ctx.deps.is_first_message:
+                prompt += f"""
+
+Start the conversation with the following introduction:
+```
+Hi! I’m all ears if you’ve got something cool to share—I love when people are passionate. Want to tell me about something you’re really into lately? Then I’ll help you figure out how to keep others interested too!
+```
+"""
+        elif preset == "ISO_BOT":
+            prompt = PROMPTS["chat_iso.md"]
+            assert prompt is not None, f"Prompt template not found for {prompt}."
+            if ctx.deps.is_first_message:
+                prompt += f"""
+
+Start the conversation with the following introduction:
+```
+Hey. You don’t have to be super social to want connection—I’m here for small steps. Maybe we could just talk about something simple. What’s something you enjoy doing alone?
+```
+"""
         else:
             raise ValueError(f"Unknown preset: {preset}")
-        assert prompt is not None, f"Prompt template not found for {prompt}."
         return prompt
 
     skill_judge_agent = create_skill_judge_agent()

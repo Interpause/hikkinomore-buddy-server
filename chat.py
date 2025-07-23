@@ -108,20 +108,32 @@ with demo:
     )
     with gr.Row():
         btn_p1 = gr.Button("Use General")
-        btn_p2 = gr.Button("Use Nervy")
-        btn_p3 = gr.Button("Use Avoi")
         btn_p1.click(
             fn=lambda: "%PRESET%\tGENERAL_BOT",
             inputs=[],
             outputs=[demo.textbox],
         )
+        btn_p2 = gr.Button("Use Nervy")
         btn_p2.click(
             fn=lambda: "%PRESET%\tNERVY_BOT",
             inputs=[],
             outputs=[demo.textbox],
         )
+        btn_p3 = gr.Button("Use Avoi")
         btn_p3.click(
             fn=lambda: "%PRESET%\tAVOI_BOT",
+            inputs=[],
+            outputs=[demo.textbox],
+        )
+        btn_p4 = gr.Button("Use Enthu")
+        btn_p4.click(
+            fn=lambda: "%PRESET%\tENTHU_BOT",
+            inputs=[],
+            outputs=[demo.textbox],
+        )
+        btn_p5 = gr.Button("Use Iso")
+        btn_p5.click(
+            fn=lambda: "%PRESET%\tISO_BOT",
             inputs=[],
             outputs=[demo.textbox],
         )

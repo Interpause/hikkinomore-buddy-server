@@ -38,6 +38,7 @@ class UserSkillSummary(BaseModel):
     skill_details: Dict[str, SkillStatus]
 
 
+# TODO: Make some of these optional to avoid the jank placeholder values elsewhere.
 @dataclass
 class ChatDeps:
     """Dependencies for the chat agent."""
@@ -46,6 +47,7 @@ class ChatDeps:
     user_id: str
     session_id: str
     preset: str
+    is_first_message: bool = False
 
 
 # NOTE: This is used as an output tool by the skill agent, so the docstrings are important.
