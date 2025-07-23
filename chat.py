@@ -139,8 +139,8 @@ with demo:
         )
 
     with gr.Accordion(label="Skill Judgement", open=False):
-        refresh_button = gr.Button("Refresh Skill Summary", variant="secondary")
-        skill_summary_display = gr.JSON(label="Skill Progress", value=None)
+        skill_summary_display = gr.Markdown(value="")
+        skill_timer = gr.Timer(value=1.0)  # Refresh every 10 seconds
 
         async def refresh_skill_summary(user_id: str):
             """Fetch and display the user's skill summary."""
@@ -150,16 +150,31 @@ with demo:
             try:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
-                        f"http://localhost:3000/skills/{user_id}/summary", timeout=10.0
+                        f"http://localhost:3000/skills/{user_id}/history", timeout=1.0
                     )
                     if response.status_code == 200:
-                        return response.json()
-                    else:
-                        return {"error": f"API error: {response.status_code}"}
-            except Exception as e:
-                return {"error": f"Failed to fetch skill summary: {str(e)}"}
+                        data = response.json()
+                        latest = (
+                            data.get("evaluations", [])[-1]
+                            if data.get("evaluations")
+                            else {}
+                        )
+                        return f"""\
+#### Skill Type
+{latest.get("skill_type", "Unknown")}
 
-        refresh_button.click(
+#### Score
+{latest.get("score", "N/A")}
+
+#### Reason
+{latest.get("reason", "N/A")}\
+"""
+                    else:
+                        return f"{{'error': 'API error: {response.status_code}'}}"
+            except Exception as e:
+                return f"{{'error': 'Failed to fetch skill summary: {str(e)}'}}"
+
+        skill_timer.tick(
             refresh_skill_summary,
             inputs=[user_id_widget],
             outputs=[skill_summary_display],
@@ -178,4 +193,4 @@ with demo:
 
 # NOTE: gradio chat.py breaks the chat interface after refresh for some reason.
 if __name__ == "__main__":
-    demo.launch(share=True)
+    demo.launch(server_name="0.0.0.0")
