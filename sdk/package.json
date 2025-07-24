@@ -1,6 +1,6 @@
 {
   "name": "@interpause/hikkinomore-buddy-sdk",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "JS SDK to use Hikkinomore Buddy API",
   "author": "John-Henry Lim <hyphen@interpause.dev>",
   "license": "MIT",
