@@ -1,4 +1,4 @@
-import { Api, type ChatRequest, type ConversationMessage } from '../lib'
+import { ChatManager, type ConversationMessage, type ValidPreset } from '../lib'
 import './style.css'
 
 // Types for local storage
@@ -17,13 +17,17 @@ interface AppState {
 }
 
 class ChatApp {
-  private api: Api
+  private chatManager: ChatManager
   private state: AppState
   private currentStreamController: AbortController | null = null
 
   constructor() {
     this.state = this.loadState()
-    this.api = new Api(this.state.apiUrl, 30000)
+    this.chatManager = new ChatManager(
+      this.state.userId,
+      this.state.apiUrl,
+      30000,
+    )
     this.init()
   }
 
@@ -160,7 +164,11 @@ class ChatApp {
     const apiUrlInput = document.getElementById('apiUrl') as HTMLInputElement
     apiUrlInput.addEventListener('change', (e) => {
       this.state.apiUrl = (e.target as HTMLInputElement).value
-      this.api = new Api(this.state.apiUrl, 30000)
+      this.chatManager = new ChatManager(
+        this.state.userId,
+        this.state.apiUrl,
+        30000,
+      )
       this.saveState()
     })
 
@@ -360,7 +368,11 @@ class ChatApp {
     }
 
     // Recreate API client with default URL
-    this.api = new Api(this.state.apiUrl, 30000)
+    this.chatManager = new ChatManager(
+      this.state.userId,
+      this.state.apiUrl,
+      30000,
+    )
 
     // Save the new state
     this.saveState()
@@ -389,7 +401,8 @@ class ChatApp {
 
   private async loadChatHistory(sessionId: string) {
     try {
-      const history = await this.api.getChatHistory(sessionId)
+      const chat = this.chatManager.getChat(sessionId)
+      const history = await chat.getHistory()
       this.renderMessages(history)
     } catch (error) {
       console.error('Failed to load chat history:', error)
@@ -449,12 +462,13 @@ class ChatApp {
       timestamp: new Date().toISOString(),
     })
 
-    // Add assistant message placeholder
+    // Add assistant message placeholder with loading animation
     const assistantMessageId = 'assistant-' + Date.now()
     this.addMessageToUI(
       {
         role: 'assistant',
-        content: '',
+        content:
+          '<div class="loading-dots"><span></span><span></span><span></span></div>',
         timestamp: new Date().toISOString(),
       },
       assistantMessageId,
@@ -467,15 +481,11 @@ class ChatApp {
       }
       this.currentStreamController = new AbortController()
 
-      const request: ChatRequest = {
-        msg: message,
-        session_id: this.state.currentSessionId,
-        user_id: this.state.userId,
-        preset: currentSession.preset as any,
-      }
+      const chat = this.chatManager.getChat(this.state.currentSessionId)
+      chat.preset = currentSession.preset as ValidPreset
 
       let fullResponse = ''
-      for await (const update of this.api.streamChatResponse(request)) {
+      for await (const update of chat.chatStream(message)) {
         fullResponse = update
         this.updateMessageContent(assistantMessageId, fullResponse)
       }
@@ -514,7 +524,12 @@ class ChatApp {
     if (messageElement) {
       const contentElement = messageElement.querySelector('.message-content')
       if (contentElement) {
-        contentElement.textContent = content
+        // Check if content contains HTML (like our loading animation)
+        if (content.includes('<div class="loading-dots">')) {
+          contentElement.innerHTML = content
+        } else {
+          contentElement.textContent = content
+        }
       }
     }
   }
