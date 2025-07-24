@@ -27,7 +27,8 @@
     "dev": "vite --host",
     "build": "tsc --p ./tsconfig-build.json && vite build",
     "preview": "vite preview",
-    "docs": "typedoc --out docs --excludeExternals --excludePrivate --excludeProtected --tsconfig tsconfig-build.json lib/index.ts",
+    "docs": "typedoc --options typedoc.json",
+    "docs:watch": "typedoc --options typedoc.json --watch",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

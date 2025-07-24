@@ -1,0 +1,26 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["lib/index.ts"],
+  "out": "docs",
+  "tsconfig": "tsconfig-build.json",
+  "excludeExternals": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "hideGenerator": true,
+  "cacheBust": true,
+  "cleanOutputDir": true,
+  "gitRevision": "main",
+  "includeVersion": true,
+  "sort": ["source-order"],
+  "theme": "default",
+  "name": "Hikkinomore Buddy SDK",
+  "readme": "README.md",
+  "navigationLinks": {
+    "GitHub": "https://github.com/Interpause/hikkinomore-buddy-server",
+    "npm": "https://www.npmjs.com/package/@interpause/hikkinomore-buddy-sdk"
+  },
+  "sidebarLinks": {
+    "GitHub Issues": "https://github.com/Interpause/hikkinomore-buddy-server/issues",
+    "API Server": "https://github.com/Interpause/hikkinomore-buddy-server"
+  }
+}
