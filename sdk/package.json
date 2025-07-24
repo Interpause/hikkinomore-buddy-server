@@ -1,0 +1,39 @@
+{
+  "name": "@interpause/hikkinomore-buddy-sdk",
+  "version": "0.0.0",
+  "description": "JS SDK to use Hikkinomore Buddy API",
+  "author": "John-Henry Lim <hyphen@interpause.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Interpause/hikkinomore-buddy-server.git",
+    "directory": "sdk"
+  },
+  "prettier": "@interpause/prettier-config",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/hikkinomore-buddy-sdk.umd.cjs",
+  "module": "./dist/hikkinomore-buddy-sdk.js",
+  "types": "dist/main.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/hikkinomore-buddy-sdk.js",
+      "require": "./dist/hikkinomore-buddy-sdk.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --p ./tsconfig-build.json && vite build",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@interpause/prettier-config": "^1.3.0",
+    "@types/node": "^24.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}
