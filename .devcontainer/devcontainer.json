@@ -13,7 +13,13 @@
       "toolsToInstall": "poetry",
       "version": "3.12"
     },
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": false,
+      "installYarnUsingApt": false,
+      "pnpmVersion": "none",
+      "nvmVersion": "latest"
+    }
   },
 
   "customizations": {
@@ -22,7 +28,8 @@
         "charliermarsh.ruff",
         "njpwerner.autodocstring",
         "tamasfe.even-better-toml",
-        "ms-toolsai.jupyter"
+        "ms-toolsai.jupyter",
+        "esbenp.prettier-vscode"
       ]
     }
   },

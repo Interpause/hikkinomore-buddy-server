@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [dts({ include: ['lib'] })],
   build: {
     lib: {
-      entry: resolve(__dirname, 'lib/main.ts'),
+      entry: resolve(__dirname, 'lib/index.ts'),
       name: 'hikkinomore-buddy-sdk',
       // the proper extensions will be added
       fileName: 'hikkinomore-buddy-sdk',

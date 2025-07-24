@@ -16,7 +16,7 @@
   ],
   "main": "./dist/hikkinomore-buddy-sdk.umd.cjs",
   "module": "./dist/hikkinomore-buddy-sdk.js",
-  "types": "dist/main.d.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/hikkinomore-buddy-sdk.js",
