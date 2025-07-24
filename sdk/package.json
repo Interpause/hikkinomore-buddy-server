@@ -24,7 +24,7 @@
     }
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc --p ./tsconfig-build.json && vite build",
     "preview": "vite preview",
     "prepublishOnly": "npm run build"
