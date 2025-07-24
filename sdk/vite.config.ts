@@ -12,7 +12,7 @@ export default defineConfig({
       entry: resolve(__dirname, 'lib/index.ts'),
       name: 'hikkinomore-buddy-sdk',
       // the proper extensions will be added
-      fileName: 'hikkinomore-buddy-sdk',
+      fileName: 'index',
     },
     copyPublicDir: false,
     sourcemap: true,
