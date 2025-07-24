@@ -97,6 +97,8 @@ def convert_model_messages_to_conversation(
                 continue
 
             elif part_kind in ("tool-call", "tool-return", "retry-prompt"):
+                # TODO: lol this is skipped either ways, maybe we can return a special message type
+                # that is used to display what tools were called
                 if skip_tool_messages:
                     continue
                 # For tool messages, we could extract the content if needed

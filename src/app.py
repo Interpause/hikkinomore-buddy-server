@@ -6,7 +6,7 @@ load_dotenv()
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -15,8 +15,9 @@ from pydantic_ai import capture_run_messages
 from src.agents.chat import create_chat_agent
 from src.db import Database
 from src.skills import get_user_skill_summary
-from src.structs import ChatDeps, ChatRequest
+from src.structs import ChatDeps, ChatRequest, ConversationMessage
 from src.user_study_logger import get_user_study_logger, init_user_study_logger
+from src.utils import convert_model_messages_to_conversation
 
 __all__ = ["create_app"]
 log = logging.getLogger(__name__)
@@ -117,6 +118,21 @@ def create_app():
                 if study_logger:
                     study_logger.log_error(user_id, session_id, f"Chat error: {str(e)}")
                 raise
+
+    @app.get("/chat/{session_id}")
+    async def get_chat_history(
+        session_id: str,
+        db: Database = Depends(get_db),
+    ) -> List[ConversationMessage]:
+        """Get chat history for a session."""
+        try:
+            messages = await db.get_messages(session_id)
+            return convert_model_messages_to_conversation(messages)
+        except Exception as e:
+            log.error(
+                f"Error retrieving chat history for {session_id}: {e}", exc_info=e
+            )
+            raise HTTPException(500, detail="Failed to retrieve chat history")
 
     @app.get("/skills/{user_id}/summary")
     async def get_skill_progress(user_id: str, db: Database = Depends(get_db)):
