@@ -6,8 +6,8 @@ export class Api {
 
   /** Initializes the API client with the base URL and request timeout
    *
-   * @param {string} url - The base URL of the API server
-   * @param {number} timeout - Timeout in milliseconds for requests
+   * @param url - The base URL of the API server
+   * @param timeout - Timeout in milliseconds for requests
    */
   constructor(url: string, timeout: number) {
     this.url = url
@@ -16,7 +16,7 @@ export class Api {
 
   /** Async generator that streams chat responses from /chat endpoint
    *
-   * @param {ChatRequest} req - The chat request parameters
+   * @param req - The chat request parameters
    * @yields The latest response as a string (not the string delta)
    *
    * @example
@@ -81,8 +81,8 @@ export class Api {
   /**
    * Utility function to await the final response from the /chat endpoint
    *
-   * @param {ChatRequest} req - The chat request parameters
-   * @returns {Promise<string>} Promise that resolves to the complete response text
+   * @param req - The chat request parameters
+   * @returns Promise that resolves to the complete response text
    *
    * @example
    * ```ts
@@ -106,8 +106,8 @@ export class Api {
   /**
    * Retrieves chat history for a given session
    *
-   * @param {string} sessionId - The session ID to retrieve history for
-   * @returns {Promise<ConversationMessage[]>} Promise that resolves to the conversation history
+   * @param sessionId - The session ID to retrieve history for
+   * @returns Promise that resolves to the conversation history
    *
    * @example
    * ```ts

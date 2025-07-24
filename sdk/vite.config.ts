@@ -15,5 +15,6 @@ export default defineConfig({
       fileName: 'hikkinomore-buddy-sdk',
     },
     copyPublicDir: false,
+    sourcemap: true,
   },
 })
